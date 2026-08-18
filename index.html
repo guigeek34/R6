@@ -1,1 +1,252 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>R6 EXTRACTION - Triangulation</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background-color: #0b0e14;
+      color: #e0e6ed;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .card {
+      background: #161b22;
+      border: 2px solid #00f0ff;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 450px;
+      width: 100%;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+      text-align: center;
+    }
+    h1 {
+      color: #00f0ff;
+      font-size: 1.5rem;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .subtitle {
+      font-size: 0.9rem;
+      color: #8b949e;
+      margin-bottom: 24px;
+    }
+    .status-container {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 24px;
+    }
+    .status-box {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 12px 16px;
+      width: 30%;
+    }
+    .status-box.active {
+      border-color: #3fb950;
+      box-shadow: 0 0 10px rgba(63, 185, 80, 0.4);
+    }
+    .status-title {
+      font-size: 0.8rem;
+      color: #8b949e;
+    }
+    .status-value {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin-top: 4px;
+    }
+    .status-value.off { color: #f85149; }
+    .status-value.on { color: #3fb950; }
 
+    .btn-activate {
+      background: #00f0ff;
+      color: #0b0e14;
+      border: none;
+      padding: 16px 32px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      text-transform: uppercase;
+      transition: all 0.2s ease;
+    }
+    .btn-activate:active {
+      transform: scale(0.98);
+    }
+    .btn-activate:disabled {
+      background: #30363d;
+      color: #8b949e;
+      cursor: not-allowed;
+    }
+
+    .clue-box {
+      display: none;
+      margin-top: 24px;
+      padding: 16px;
+      background: rgba(63, 185, 80, 0.15);
+      border: 1px solid #3fb950;
+      border-radius: 8px;
+      color: #3fb950;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+
+  <!-- SDK Firebase V9 (Modules compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+  <div class="card">
+    <h1>MISSION TRIANGULATION</h1>
+    <div class="subtitle" id="station-label">STATION NON DÉFINIE</div>
+
+    <div class="status-container">
+      <div class="status-box" id="box-A">
+        <div class="status-title">RELAIS A</div>
+        <div class="status-value off" id="val-A">OFF</div>
+      </div>
+      <div class="status-box" id="box-B">
+        <div class="status-title">RELAIS B</div>
+        <div class="status-value off" id="val-B">OFF</div>
+      </div>
+      <div class="status-box" id="box-C">
+        <div class="status-title">RELAIS C</div>
+        <div class="status-value off" id="val-C">OFF</div>
+      </div>
+    </div>
+
+    <button class="btn-activate" id="activate-btn" onclick="activateStation()">ACTIVER LE RELAIS</button>
+
+    <div class="clue-box" id="clue-box">
+      <h3>SIGNAL TRIANGULÉ !</h3>
+      <p id="clue-text" style="margin-top: 8px; font-weight: bold; color: #fff;">
+        L'indice final s'affiche ici : "Rendez-vous au grand chêne près de la cabane !"
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // 1. CONFIGURATION FIREBASE (À Remplacer avec vos clés)
+    // -------------------------------------------------------------
+    const firebaseConfig = {
+      apiKey: "AIzaSyBxehS0c1P5agFoWPphgF1WUmNV3n8rdnI",
+      authDomain: "r6-triangulation.firebaseapp.com",
+      databaseURL: "https://r6-triangulation-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "r6-triangulation",
+      storageBucket: "r6-triangulation.firebasestorage.app",
+      messagingSenderId: "211530235938",
+      appId: "1:211530235938:web:d0fb255fd94c3764ad4a7b"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Fenêtre d'activation simultanée maximale (ex. 30 secondes)
+    const MAX_TIME_WINDOW_MS = 30 * 1000;
+
+    // -------------------------------------------------------------
+    // 2. DÉTECTION DE LA STATION VIA L'URL (?station=A, B ou C)
+    // -------------------------------------------------------------
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentStation = (urlParams.get('station') || 'A').toUpperCase();
+    
+    document.getElementById('station-label').innerText = `STATION ACTIVE : RELAIS ${currentStation}`;
+
+    // -------------------------------------------------------------
+    // 3. ACTION DU BOUTON
+    // -------------------------------------------------------------
+    function activateStation() {
+      const now = Date.now();
+      db.ref(`triangulation/station_${currentStation}`).set({
+        active: true,
+        timestamp: now
+      });
+      
+      const btn = document.getElementById('activate-btn');
+      btn.disabled = true;
+      btn.innerText = "RELAIS ÉMIS...";
+    }
+
+    // -------------------------------------------------------------
+    // 4. ÉCOUTE DE LA BASE DE DONNÉES EN TEMPS RÉEL
+    // -------------------------------------------------------------
+    db.ref('triangulation').on('value', (snapshot) => {
+      const data = snapshot.val() || {};
+
+      const stA = data.station_A || { active: false, timestamp: 0 };
+      const stB = data.station_B || { active: false, timestamp: 0 };
+      const stC = data.station_C || { active: false, timestamp: 0 };
+
+      // Mise à jour visuelle des modules
+      updateUI('A', stA.active);
+      updateUI('B', stB.active);
+      updateUI('C', stC.active);
+
+      // Désactiver le bouton si la station courante est déjà active
+      if (data[`station_${currentStation}`]?.active) {
+        const btn = document.getElementById('activate-btn');
+        btn.disabled = true;
+        btn.innerText = "RELAIS ACTIF";
+      }
+
+      // Vérification des conditions de réussite
+      if (stA.active && stB.active && stC.active) {
+        const timestamps = [stA.timestamp, stB.timestamp, stC.timestamp];
+        const minTime = Math.min(...timestamps);
+        const maxTime = Math.max(...timestamps);
+
+        // Si la différence entre le premier et le dernier clic est < MAX_TIME_WINDOW_MS
+        if ((maxTime - minTime) <= MAX_TIME_WINDOW_MS) {
+          document.getElementById('clue-box').style.display = 'block';
+        } else {
+          // Hors délai : réinitialisation automatique après un court instant
+          alert("ÉCHEC DE SYNC : Les relais doivent être activés dans une fenêtre de 30 secondes ! Réinitialisation...");
+          db.ref('triangulation').set({
+            station_A: { active: false, timestamp: 0 },
+            station_B: { active: false, timestamp: 0 },
+            station_C: { active: false, timestamp: 0 }
+          });
+        }
+      }
+    });
+
+    function updateUI(station, isActive) {
+      const box = document.getElementById(`box-${station}`);
+      const val = document.getElementById(`val-${station}`);
+
+      if (isActive) {
+        box.classList.add('active');
+        val.classList.remove('off');
+        val.classList.add('on');
+        val.innerText = "ON";
+      } else {
+        box.classList.remove('active');
+        val.classList.remove('on');
+        val.classList.add('off');
+        val.innerText = "OFF";
+      }
+    }
+  </script>
+</body>
+</html>
