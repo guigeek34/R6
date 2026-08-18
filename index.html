@@ -193,41 +193,55 @@
     const MAX_TIME_WINDOW_MS = 30 * 1000;
 
     // -------------------------------------------------------------
-    // 2. DÉTECTION DU PARAMÈTRE DANS L'URL
+    // 2. DÉTECTION ET ACTION SUR PARAMÈTRE URL
     // -------------------------------------------------------------
     const urlParams = new URLSearchParams(window.location.search);
     const currentStation = (urlParams.get('station') || 'A').toLowerCase();
-
+    
     const stationLabel = document.getElementById('station-label');
     const activateBtn = document.getElementById('activate-btn');
     const resetBtn = document.getElementById('reset-btn');
-
-    // Cas 1 : Si le paramètre est "reset" (?station=reset ou ?reset)
-    if (currentStation === 'reset' || urlParams.has('reset')) {
-      stationLabel.innerText = "RÉINITIALISATION EN COURS...";
-      stationLabel.style.color = "#f85149";
-      activateBtn.style.display = 'none';
-
-      // Déclenche le reset immédiatement dans Firebase
+    
+    // Fonction globale pour réinitialiser Firebase
+    function executeReset(callback) {
       db.ref('triangulation').set({
         station_A: { active: false, timestamp: 0 },
         station_B: { active: false, timestamp: 0 },
         station_C: { active: false, timestamp: 0 }
-      }).then(() => {
-        // Redirige automatiquement vers le mode admin classique
+      })
+      .then(() => {
+        console.log("Firebase réinitialisé avec succès !");
+        if (callback) callback();
+      })
+      .catch((error) => {
+        console.error("Erreur de réinitialisation Firebase :", error);
+        alert("Erreur Firebase (Vérifiez vos règles de sécurité) : " + error.message);
+      });
+    }
+    
+    // Traitement selon le paramètre dans l'URL
+    if (currentStation === 'reset' || urlParams.has('reset')) {
+      stationLabel.innerText = "RÉINITIALISATION EN COURS...";
+      stationLabel.style.color = "#f85149";
+      activateBtn.style.display = 'none';
+    
+      // Exécute le reset et attend la réponse de Firebase avant de rediriger
+      executeReset(() => {
         window.location.href = window.location.pathname + '?station=admin';
       });
     } 
-    // Cas 2 : Mode Admin (?station=admin)
     else if (currentStation === 'admin') {
       stationLabel.innerText = "MODE ADMINISTRATEUR";
       stationLabel.style.color = "#f85149";
       resetBtn.style.display = 'block';
       activateBtn.style.display = 'none';
     } 
-    // Cas 3 : Stations Joueurs (?station=A, B ou C)
     else {
       stationLabel.innerText = `STATION ACTIVE : RELAIS ${currentStation.toUpperCase()}`;
+    }
+    
+    function resetGame() {
+      executeReset();
     }
 
     // -------------------------------------------------------------
@@ -257,52 +271,52 @@
       });
     }
 
-// -------------------------------------------------------------
-// 5. ÉCOUTE ET SYNCHRONISATION TEMPS RÉEL (FIREBASE)
-// -------------------------------------------------------------
-db.ref('triangulation').on('value', (snapshot) => {
-  const data = snapshot.val() || {};
-
-  const stA = data.station_A || { active: false, timestamp: 0 };
-  const stB = data.station_B || { active: false, timestamp: 0 };
-  const stC = data.station_C || { active: false, timestamp: 0 };
-
-  // Mise à jour visuelle des 3 relais (OFF / ON)
-  updateUI('A', stA.active);
-  updateUI('B', stB.active);
-  updateUI('C', stC.active);
-
-  // Synchronisation de l'état du bouton local
-  if (currentStation !== 'admin' && currentStation !== 'reset') {
-    const key = `station_${currentStation.toUpperCase()}`;
-    const myStationData = data[key];
-
-    // Si la station n'existe pas ou n'est plus active (suite à un reset)
-    if (!myStationData || !myStationData.active) {
-      activateBtn.disabled = false;
-      activateBtn.innerText = "ACTIVER LE RELAIS";
-    } else {
-      activateBtn.disabled = true;
-      activateBtn.innerText = "RELAIS ÉMIS...";
-    }
-  }
-
-  // Vérification de la réussite globale
-  if (stA.active && stB.active && stC.active) {
-    const timestamps = [stA.timestamp, stB.timestamp, stC.timestamp];
-    const minTime = Math.min(...timestamps);
-    const maxTime = Math.max(...timestamps);
-
-    if ((maxTime - minTime) <= MAX_TIME_WINDOW_MS) {
-      document.getElementById('clue-box').style.display = 'block';
-    } else {
-      alert("ÉCHEC DE SYNC : Les relais doivent être activés dans une fenêtre de 30 secondes ! Réinitialisation...");
-      resetGame();
-    }
-  } else {
-    document.getElementById('clue-box').style.display = 'none';
-  }
-});
+    // -------------------------------------------------------------
+    // 5. ÉCOUTE ET SYNCHRONISATION TEMPS RÉEL (FIREBASE)
+    // -------------------------------------------------------------
+    db.ref('triangulation').on('value', (snapshot) => {
+      const data = snapshot.val() || {};
+    
+      const stA = data.station_A || { active: false, timestamp: 0 };
+      const stB = data.station_B || { active: false, timestamp: 0 };
+      const stC = data.station_C || { active: false, timestamp: 0 };
+    
+      // Mise à jour visuelle des 3 relais (OFF / ON)
+      updateUI('A', stA.active);
+      updateUI('B', stB.active);
+      updateUI('C', stC.active);
+    
+      // Synchronisation de l'état du bouton local
+      if (currentStation !== 'admin' && currentStation !== 'reset') {
+        const key = `station_${currentStation.toUpperCase()}`;
+        const myStationData = data[key];
+    
+        // Si la station n'existe pas ou n'est plus active (suite à un reset)
+        if (!myStationData || !myStationData.active) {
+          activateBtn.disabled = false;
+          activateBtn.innerText = "ACTIVER LE RELAIS";
+        } else {
+          activateBtn.disabled = true;
+          activateBtn.innerText = "RELAIS ÉMIS...";
+        }
+      }
+    
+      // Vérification de la réussite globale
+      if (stA.active && stB.active && stC.active) {
+        const timestamps = [stA.timestamp, stB.timestamp, stC.timestamp];
+        const minTime = Math.min(...timestamps);
+        const maxTime = Math.max(...timestamps);
+    
+        if ((maxTime - minTime) <= MAX_TIME_WINDOW_MS) {
+          document.getElementById('clue-box').style.display = 'block';
+        } else {
+          alert("ÉCHEC DE SYNC : Les relais doivent être activés dans une fenêtre de 30 secondes ! Réinitialisation...");
+          resetGame();
+        }
+      } else {
+        document.getElementById('clue-box').style.display = 'none';
+      }
+    });
 
     function updateUI(station, isActive) {
       const box = document.getElementById(`box-${station}`);
