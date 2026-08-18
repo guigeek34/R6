@@ -257,51 +257,52 @@
       });
     }
 
-    // -------------------------------------------------------------
-    // 5. ÉCOUTE ET SYNCHRONISATION TEMPS RÉEL (FIREBASE)
-    // -------------------------------------------------------------
-    db.ref('triangulation').on('value', (snapshot) => {
-      const data = snapshot.val() || {};
+// -------------------------------------------------------------
+// 5. ÉCOUTE ET SYNCHRONISATION TEMPS RÉEL (FIREBASE)
+// -------------------------------------------------------------
+db.ref('triangulation').on('value', (snapshot) => {
+  const data = snapshot.val() || {};
 
-      const stA = data.station_A || { active: false, timestamp: 0 };
-      const stB = data.station_B || { active: false, timestamp: 0 };
-      const stC = data.station_C || { active: false, timestamp: 0 };
+  const stA = data.station_A || { active: false, timestamp: 0 };
+  const stB = data.station_B || { active: false, timestamp: 0 };
+  const stC = data.station_C || { active: false, timestamp: 0 };
 
-      // Mise à jour visuelle des 3 relais (OFF / ON)
-      updateUI('A', stA.active);
-      updateUI('B', stB.active);
-      updateUI('C', stC.active);
+  // Mise à jour visuelle des 3 relais (OFF / ON)
+  updateUI('A', stA.active);
+  updateUI('B', stB.active);
+  updateUI('C', stC.active);
 
-      // Gestion de l'état du bouton pour la station actuelle
-      if (currentStation !== 'admin' && currentStation !== 'reset') {
-        const myStationData = data[`station_${currentStation.toUpperCase()}`];
-        if (!myStationData || !myStationData.active) {
-          activateBtn.disabled = false;
-          activateBtn.innerText = "ACTIVER LE RELAIS";
-        } else {
-          activateBtn.disabled = true;
-          activateBtn.innerText = "RELAIS ACTIF";
-        }
-      }
+  // Synchronisation de l'état du bouton local
+  if (currentStation !== 'admin' && currentStation !== 'reset') {
+    const key = `station_${currentStation.toUpperCase()}`;
+    const myStationData = data[key];
 
-      // Vérification de la réussite globale
-      if (stA.active && stB.active && stC.active) {
-        const timestamps = [stA.timestamp, stB.timestamp, stC.timestamp];
-        const minTime = Math.min(...timestamps);
-        const maxTime = Math.max(...timestamps);
+    // Si la station n'existe pas ou n'est plus active (suite à un reset)
+    if (!myStationData || !myStationData.active) {
+      activateBtn.disabled = false;
+      activateBtn.innerText = "ACTIVER LE RELAIS";
+    } else {
+      activateBtn.disabled = true;
+      activateBtn.innerText = "RELAIS ÉMIS...";
+    }
+  }
 
-        if ((maxTime - minTime) <= MAX_TIME_WINDOW_MS) {
-          document.getElementById('clue-box').style.display = 'block';
-        } else {
-          // Échec de synchronisation (hors délai)
-          alert("ÉCHEC DE SYNC : Les relais doivent être activés dans une fenêtre de 30 secondes ! Réinitialisation...");
-          resetGame();
-        }
-      } else {
-        // Si au moins un relais passe à OFF, masquer l'indice
-        document.getElementById('clue-box').style.display = 'none';
-      }
-    });
+  // Vérification de la réussite globale
+  if (stA.active && stB.active && stC.active) {
+    const timestamps = [stA.timestamp, stB.timestamp, stC.timestamp];
+    const minTime = Math.min(...timestamps);
+    const maxTime = Math.max(...timestamps);
+
+    if ((maxTime - minTime) <= MAX_TIME_WINDOW_MS) {
+      document.getElementById('clue-box').style.display = 'block';
+    } else {
+      alert("ÉCHEC DE SYNC : Les relais doivent être activés dans une fenêtre de 30 secondes ! Réinitialisation...");
+      resetGame();
+    }
+  } else {
+    document.getElementById('clue-box').style.display = 'none';
+  }
+});
 
     function updateUI(station, isActive) {
       const box = document.getElementById(`box-${station}`);
