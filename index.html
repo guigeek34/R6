@@ -144,6 +144,20 @@
         inset 0 0 15px rgba(255, 221, 0, 0.2);
     }
     
+    .ready-indicator {
+      font-size: 0.7rem;
+      color: #888888;
+      margin-top: 6px;
+      letter-spacing: 0.5px;
+      font-weight: bold;
+      min-height: 14px;
+    }
+    
+    .ready-indicator.ready {
+      color: #00ff00;
+      text-shadow: 0 0 8px rgba(0, 255, 0, 0.8);
+    }
+    
     .status-title {
       font-size: 0.75rem;
       color: #ffa500;
@@ -347,14 +361,17 @@
       <div class="status-box" id="box-A">
         <div class="status-title">RELAIS A</div>
         <div class="status-value off" id="val-A">OFF</div>
+        <div class="ready-indicator" id="ready-A"></div>
       </div>
       <div class="status-box" id="box-B">
         <div class="status-title">RELAIS B</div>
         <div class="status-value off" id="val-B">OFF</div>
+        <div class="ready-indicator" id="ready-B"></div>
       </div>
       <div class="status-box" id="box-C">
         <div class="status-title">RELAIS C</div>
         <div class="status-value off" id="val-C">OFF</div>
+        <div class="ready-indicator" id="ready-C"></div>
       </div>
     </div>
 
@@ -533,10 +550,15 @@
       const stB = data.station_B || { active: false, timestamp: 0, ready: false };
       const stC = data.station_C || { active: false, timestamp: 0, ready: false };
 
-      // Mise à jour des voyants de statut
+    // Mise à jour des voyants de statut
       updateUI('A', stA.active);
       updateUI('B', stB.active);
       updateUI('C', stC.active);
+
+      // Mise à jour des indicateurs de PRÊT pour toutes les stations
+      updateReadyIndicator('A', stA.ready);
+      updateReadyIndicator('B', stB.ready);
+      updateReadyIndicator('C', stC.ready);
 
       // Gestion du bouton local
       if (currentStation && currentStation !== 'admin' && currentStation !== 'reset') {
@@ -576,6 +598,20 @@
         document.getElementById('clue-box').style.display = 'none';
       }
     });
+
+    // Fonction pour mettre à jour l'indicateur READY d'une station
+    function updateReadyIndicator(station, isReady) {
+      const readyDiv = document.getElementById(`ready-${station}`);
+      if (readyDiv) {
+        if (isReady) {
+          readyDiv.classList.add('ready');
+          readyDiv.innerText = '✅ PRÊT';
+        } else {
+          readyDiv.classList.remove('ready');
+          readyDiv.innerText = '';
+        }
+      }
+    }
 
     function updateUI(station, isActive) {
       const box = document.getElementById(`box-${station}`);
