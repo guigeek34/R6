@@ -21,7 +21,7 @@
     }
     
     body {
-      background: var(--bg);
+      background: var(--bg) url('R6_logo.jpg') center top / cover no-repeat;
       background-attachment: fixed;
       color: #e6e9ee;
       display: flex;
@@ -61,7 +61,7 @@
     
     .card {
       position: relative;
-      z-index: 2;
+      z-index: 3;
       background: linear-gradient(135deg, var(--muted) 0%, #111318 50%, var(--muted) 100%);
       border: 3px solid var(--accent);
       border-radius: 2px;
@@ -78,12 +78,13 @@
     }
 
     #r6-logo {
-      max-width: 240px;
-      width: 100%;
+      max-width: 480px;
+      width: auto;
       height: auto;
       margin-bottom: 18px;
       display: block;
-      z-index: 3;
+      z-index: 4;
+      filter: drop-shadow(0 6px 20px rgba(0,0,0,0.6));
     }
     
     @keyframes cardPulse {
