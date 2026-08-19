@@ -196,6 +196,34 @@
       50% { transform: scale(1.1); }
     }
     
+    .error-message {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(135deg, #cc3333, #ff4444, #dd2222);
+      color: #ffffff;
+      border: 3px solid #ff6666;
+      border-radius: 0px;
+      padding: 30px 40px;
+      font-size: 1.3rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-align: center;
+      z-index: 1000;
+      box-shadow: 0 0 60px rgba(255, 68, 68, 1), inset 0 0 20px rgba(255, 68, 68, 0.4);
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+      white-space: pre-line;
+      animation: errorPulse 0.5s ease-in-out;
+    }
+    
+    @keyframes errorPulse {
+      0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+      50% { transform: translate(-50%, -50%) scale(1.05); }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+    
     .status-title {
       font-size: 0.75rem;
       color: #ffa500;
@@ -397,17 +425,17 @@
 
     <div class="status-container">
       <div class="status-box" id="box-A">
-        <div class="status-title">RELAIS A</div>
+        <div class="status-title">STATION A</div>
         <div class="status-value off" id="val-A">OFF</div>
         <div class="ready-indicator" id="ready-A"></div>
       </div>
       <div class="status-box" id="box-B">
-        <div class="status-title">RELAIS B</div>
+        <div class="status-title">STATION B</div>
         <div class="status-value off" id="val-B">OFF</div>
         <div class="ready-indicator" id="ready-B"></div>
       </div>
       <div class="status-box" id="box-C">
-        <div class="status-title">RELAIS C</div>
+        <div class="status-title">STATION C</div>
         <div class="status-value off" id="val-C">OFF</div>
         <div class="ready-indicator" id="ready-C"></div>
       </div>
@@ -420,7 +448,7 @@
     </div>
 
     <!-- Bouton Joueur -->
-    <button class="btn-activate" id="activate-btn" onclick="activateStation()">ACTIVER LE RELAIS</button>
+    <button class="btn-activate" id="activate-btn" onclick="activateStation()">ACTIVER LA STATION</button>
 
     <!-- Bouton Prêt -->
     <button class="btn-ready" id="ready-btn" onclick="toggleReady()">🔄 PRÊT</button>
@@ -506,6 +534,13 @@
     
     // Variable pour gérer l'intervalle du timer
     let timerInterval = null;
+    
+    // Créer l'élément de message d'erreur
+    const errorMessage = document.createElement('div');
+    errorMessage.className = 'error-message';
+    errorMessage.id = 'error-message';
+    errorMessage.innerText = 'ÉCHEC DE SYNC\nFenêtre de 30s dépassée';
+    document.body.appendChild(errorMessage);
 
     // Fonction de réinitialisation sécurisée
     function executeReset(redirectAfter = false) {
@@ -561,7 +596,7 @@
       readyBtn.style.display = 'none';
     } 
     else {
-      stationLabel.innerText = `STATION ACTIVE : RELAIS ${currentStation.toUpperCase()}`;
+      stationLabel.innerText = `STATION ${currentStation.toUpperCase()}`;
       readyBtn.style.display = 'block';
     }
 
@@ -572,7 +607,7 @@
       if (!currentStation || currentStation === 'admin' || currentStation === 'reset') return;
 
       activateBtn.disabled = true;
-      activateBtn.innerText = "RELAIS ÉMIS...";
+      activateBtn.innerText = "STATION ACTIVÉE...";
 
       // Vérifier si c'est la première activation
       db.ref('triangulation').once('value', (snapshot) => {
@@ -699,10 +734,10 @@
 
         if (!myStationData || !myStationData.active) {
           activateBtn.disabled = false;
-          activateBtn.innerText = "ACTIVER LE RELAIS";
+          activateBtn.innerText = "ACTIVER LA STATION";
         } else {
           activateBtn.disabled = true;
-          activateBtn.innerText = "RELAIS ÉMIS...";
+          activateBtn.innerText = "STATION ACTIVÉE...";
         }
 
         // Mise à jour du bouton PRÊT
@@ -725,8 +760,12 @@
           stopTimerDisplay();
           document.getElementById('clue-box').style.display = 'block';
         } else {
-          alert("ÉCHEC DE SYNC : Fenêtre de 30s dépassée. Réinitialisation !");
-          executeReset(false);
+          // Afficher le message d'erreur pendant 3s puis réinitialiser
+          errorMessage.style.display = 'block';
+          setTimeout(() => {
+            errorMessage.style.display = 'none';
+            executeReset(false);
+          }, 3000);
         }
       } else {
         document.getElementById('clue-box').style.display = 'none';
