@@ -158,6 +158,44 @@
       text-shadow: 0 0 8px rgba(0, 255, 0, 0.8);
     }
     
+    .timer-container {
+      display: none;
+      margin-top: 24px;
+      padding: 16px;
+      background: linear-gradient(135deg, rgba(204, 51, 51, 0.15), rgba(255, 68, 68, 0.1));
+      border: 2px solid #ff6666;
+      border-radius: 0px;
+      text-align: center;
+    }
+    
+    .timer-label {
+      font-size: 0.8rem;
+      color: #ff6666;
+      font-weight: bold;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    
+    .timer-display {
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: #ffdd00;
+      letter-spacing: 2px;
+      text-shadow: 0 0 20px rgba(255, 221, 0, 0.8), 0 0 40px rgba(255, 165, 0, 0.6);
+      font-family: 'Courier New', monospace;
+    }
+    
+    .timer-display.warning {
+      color: #ff6666;
+      text-shadow: 0 0 20px rgba(255, 102, 102, 0.8), 0 0 40px rgba(255, 68, 68, 0.6);
+      animation: timerWarning 0.5s ease-in-out infinite;
+    }
+    
+    @keyframes timerWarning {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    
     .status-title {
       font-size: 0.75rem;
       color: #ffa500;
@@ -375,6 +413,12 @@
       </div>
     </div>
 
+    <!-- Compte à rebour -->
+    <div class="timer-container" id="timer-container">
+      <div class="timer-label">SYNCHRONISATION REQUISE</div>
+      <div class="timer-display" id="timer-display">30</div>
+    </div>
+
     <!-- Bouton Joueur -->
     <button class="btn-activate" id="activate-btn" onclick="activateStation()">ACTIVER LE RELAIS</button>
 
@@ -457,15 +501,28 @@
     const activateBtn = document.getElementById('activate-btn');
     const resetBtn = document.getElementById('reset-btn');
     const readyBtn = document.getElementById('ready-btn');
+    const timerContainer = document.getElementById('timer-container');
+    const timerDisplay = document.getElementById('timer-display');
+    
+    // Variable pour gérer l'intervalle du timer
+    let timerInterval = null;
 
     // Fonction de réinitialisation sécurisée
     function executeReset(redirectAfter = false) {
       if (resetBtn) resetBtn.innerText = "PATIENTEZ...";
+      
+      // Arrêter le timer
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      timerContainer.style.display = 'none';
 
       db.ref('triangulation').set({
         station_A: { active: false, timestamp: 0, ready: false },
         station_B: { active: false, timestamp: 0, ready: false },
-        station_C: { active: false, timestamp: 0, ready: false }
+        station_C: { active: false, timestamp: 0, ready: false },
+        startTime: 0
       })
       .then(() => {
         if (redirectAfter) {
@@ -517,10 +574,28 @@
       activateBtn.disabled = true;
       activateBtn.innerText = "RELAIS ÉMIS...";
 
-      db.ref(`triangulation/station_${currentStation.toUpperCase()}`).set({
-        active: true,
-        timestamp: Date.now(),
-        ready: false
+      // Vérifier si c'est la première activation
+      db.ref('triangulation').once('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        const startTime = data.startTime || 0;
+        
+        // Si aucun startTime, c'est la première activation
+        if (startTime === 0) {
+          db.ref('triangulation').update({
+            startTime: Date.now(),
+            [`station_${currentStation.toUpperCase()}`]: {
+              active: true,
+              timestamp: Date.now(),
+              ready: false
+            }
+          });
+        } else {
+          db.ref(`triangulation/station_${currentStation.toUpperCase()}`).set({
+            active: true,
+            timestamp: Date.now(),
+            ready: false
+          });
+        }
       });
     }
 
@@ -540,6 +615,56 @@
       executeReset(false);
     }
 
+    // Fonction pour mettre à jour et afficher le timer
+    function updateTimer(startTime) {
+      const now = Date.now();
+      const elapsed = now - startTime;
+      const remaining = Math.max(0, MAX_TIME_WINDOW_MS - elapsed);
+      const secondsRemaining = Math.ceil(remaining / 1000);
+      
+      timerDisplay.innerText = secondsRemaining.toString().padStart(2, '0');
+      
+      // Passer en orange/rouge quand moins de 10 secondes
+      if (secondsRemaining <= 10) {
+        timerDisplay.classList.add('warning');
+      } else {
+        timerDisplay.classList.remove('warning');
+      }
+      
+      return secondsRemaining;
+    }
+
+    function startTimerDisplay(startTime) {
+      // Arrêter l'ancien timer s'il existe
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+      
+      timerContainer.style.display = 'block';
+      
+      // Mise à jour immédiate
+      const remaining = updateTimer(startTime);
+      
+      if (remaining > 0) {
+        // Mettre à jour le timer chaque 100ms pour une meilleure précision
+        timerInterval = setInterval(() => {
+          const newRemaining = updateTimer(startTime);
+          if (newRemaining <= 0) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+          }
+        }, 100);
+      }
+    }
+
+    function stopTimerDisplay() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      timerContainer.style.display = 'none';
+    }
+
     // -------------------------------------------------------------
     // 4. SYNCHRONISATION TEMPS RÉEL (FIREBASE)
     // -------------------------------------------------------------
@@ -549,6 +674,7 @@
       const stA = data.station_A || { active: false, timestamp: 0, ready: false };
       const stB = data.station_B || { active: false, timestamp: 0, ready: false };
       const stC = data.station_C || { active: false, timestamp: 0, ready: false };
+      const startTime = data.startTime || 0;
 
     // Mise à jour des voyants de statut
       updateUI('A', stA.active);
@@ -559,6 +685,13 @@
       updateReadyIndicator('A', stA.ready);
       updateReadyIndicator('B', stB.ready);
       updateReadyIndicator('C', stC.ready);
+
+      // Gestion du timer
+      if (startTime > 0) {
+        startTimerDisplay(startTime);
+      } else {
+        stopTimerDisplay();
+      }
 
       // Gestion du bouton local
       if (currentStation && currentStation !== 'admin' && currentStation !== 'reset') {
@@ -589,6 +722,7 @@
         const maxTime = Math.max(...timestamps);
 
         if ((maxTime - minTime) <= MAX_TIME_WINDOW_MS) {
+          stopTimerDisplay();
           document.getElementById('clue-box').style.display = 'block';
         } else {
           alert("ÉCHEC DE SYNC : Fenêtre de 30s dépassée. Réinitialisation !");
