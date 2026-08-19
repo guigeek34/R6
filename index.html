@@ -232,6 +232,45 @@
       text-shadow: none;
     }
 
+    .btn-ready {
+      display: none;
+      margin-top: 12px;
+      background: linear-gradient(135deg, #555555, #777777, #555555);
+      color: #ffffff;
+      border: 2px solid #888888;
+      padding: 12px 24px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      border-radius: 0px;
+      cursor: pointer;
+      width: 100%;
+      text-transform: uppercase;
+      transition: all 0.2s ease;
+      box-shadow: 0 0 10px rgba(136, 136, 136, 0.4);
+    }
+    
+    .btn-ready:hover {
+      box-shadow: 0 0 20px rgba(136, 136, 136, 0.6);
+      transform: translateY(-2px);
+    }
+    
+    .btn-ready.active {
+      background: linear-gradient(135deg, #00dd00, #00ff00, #00dd00);
+      color: #000000;
+      border-color: #00ff00;
+      box-shadow: 0 0 30px rgba(0, 255, 0, 0.8), inset 0 0 10px rgba(0, 255, 0, 0.3);
+      font-weight: 900;
+    }
+    
+    .btn-ready.active:hover {
+      box-shadow: 0 0 50px rgba(0, 255, 0, 1), inset 0 0 15px rgba(0, 255, 0, 0.5);
+    }
+    
+    .btn-ready:active {
+      transform: scale(0.98);
+    }
+
     .btn-reset {
       display: none;
       margin-top: 16px;
@@ -322,6 +361,9 @@
     <!-- Bouton Joueur -->
     <button class="btn-activate" id="activate-btn" onclick="activateStation()">ACTIVER LE RELAIS</button>
 
+    <!-- Bouton Prêt -->
+    <button class="btn-ready" id="ready-btn" onclick="toggleReady()">🔄 PRÊT</button>
+
     <!-- Bouton Administrateur -->
     <button class="btn-reset" id="reset-btn" onclick="resetGame()">⚠️ RÉINITIALISER LA MISSION</button>
 
@@ -397,15 +439,16 @@
     const stationLabel = document.getElementById('station-label');
     const activateBtn = document.getElementById('activate-btn');
     const resetBtn = document.getElementById('reset-btn');
+    const readyBtn = document.getElementById('ready-btn');
 
     // Fonction de réinitialisation sécurisée
     function executeReset(redirectAfter = false) {
       if (resetBtn) resetBtn.innerText = "PATIENTEZ...";
 
       db.ref('triangulation').set({
-        station_A: { active: false, timestamp: 0 },
-        station_B: { active: false, timestamp: 0 },
-        station_C: { active: false, timestamp: 0 }
+        station_A: { active: false, timestamp: 0, ready: false },
+        station_B: { active: false, timestamp: 0, ready: false },
+        station_C: { active: false, timestamp: 0, ready: false }
       })
       .then(() => {
         if (redirectAfter) {
@@ -427,11 +470,13 @@
       stationLabel.style.color = "#cc3333";
       activateBtn.style.display = 'none';
       activateBtn.disabled = true;
+      readyBtn.style.display = 'none';
     }
     else if (currentStation === 'reset') {
       stationLabel.innerText = "RÉINITIALISATION EN COURS...";
       stationLabel.style.color = "#cc3333";
       activateBtn.style.display = 'none';
+      readyBtn.style.display = 'none';
       executeReset(true);
     } 
     else if (isAdmin) {
@@ -439,9 +484,11 @@
       stationLabel.style.color = "#cc3333";
       resetBtn.style.display = 'block';
       activateBtn.style.display = 'none';
+      readyBtn.style.display = 'none';
     } 
     else {
       stationLabel.innerText = `STATION ACTIVE : RELAIS ${currentStation.toUpperCase()}`;
+      readyBtn.style.display = 'block';
     }
 
     // -------------------------------------------------------------
@@ -455,7 +502,20 @@
 
       db.ref(`triangulation/station_${currentStation.toUpperCase()}`).set({
         active: true,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        ready: false
+      });
+    }
+
+    function toggleReady() {
+      if (!currentStation || currentStation === 'admin' || currentStation === 'reset') return;
+
+      const stationKey = `station_${currentStation.toUpperCase()}`;
+      db.ref(`triangulation/${stationKey}`).once('value', (snapshot) => {
+        const data = snapshot.val() || { active: false, timestamp: 0, ready: false };
+        db.ref(`triangulation/${stationKey}`).update({
+          ready: !data.ready
+        });
       });
     }
 
@@ -469,9 +529,9 @@
     db.ref('triangulation').on('value', (snapshot) => {
       const data = snapshot.val() || {};
 
-      const stA = data.station_A || { active: false, timestamp: 0 };
-      const stB = data.station_B || { active: false, timestamp: 0 };
-      const stC = data.station_C || { active: false, timestamp: 0 };
+      const stA = data.station_A || { active: false, timestamp: 0, ready: false };
+      const stB = data.station_B || { active: false, timestamp: 0, ready: false };
+      const stC = data.station_C || { active: false, timestamp: 0, ready: false };
 
       // Mise à jour des voyants de statut
       updateUI('A', stA.active);
@@ -488,6 +548,15 @@
         } else {
           activateBtn.disabled = true;
           activateBtn.innerText = "RELAIS ÉMIS...";
+        }
+
+        // Mise à jour du bouton PRÊT
+        if (myStationData && myStationData.ready) {
+          readyBtn.classList.add('active');
+          readyBtn.innerText = "✅ PRÊT";
+        } else {
+          readyBtn.classList.remove('active');
+          readyBtn.innerText = "🔄 PRÊT";
         }
       }
 
