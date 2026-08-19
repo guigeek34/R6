@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>R6 EXTRACTION - Triangulation</title>
   <style>
+    :root {
+      --bg: #000000;
+      --muted: #0d0d10;
+      --accent: #ff4b00; /* R6 orange */
+      --highlight: #ffd100; /* yellow highlight */
+      --danger: #ff3b30;
+      --success: #00dd66;
+    }
     * {
       box-sizing: border-box;
       margin: 0;
@@ -13,9 +21,9 @@
     }
     
     body {
-      background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a0f 100%);
+      background: var(--bg);
       background-attachment: fixed;
-      color: #e0e6ed;
+      color: #e6e9ee;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -36,8 +44,8 @@
       height: 100%;
       background: repeating-linear-gradient(
         0deg,
-        rgba(255, 165, 0, 0.03) 0px,
-        rgba(255, 165, 0, 0.03) 1px,
+        rgba(255, 75, 0, 0.03) 0px,
+        rgba(255, 75, 0, 0.03) 1px,
         transparent 1px,
         transparent 2px
       );
@@ -54,19 +62,28 @@
     .card {
       position: relative;
       z-index: 2;
-      background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
-      border: 3px solid #ffa500;
+      background: linear-gradient(135deg, var(--muted) 0%, #111318 50%, var(--muted) 100%);
+      border: 3px solid var(--accent);
       border-radius: 2px;
       padding: 30px;
       max-width: 500px;
       width: 100%;
       box-shadow: 
-        0 0 40px rgba(255, 165, 0, 0.4),
-        0 0 80px rgba(255, 165, 0, 0.2),
-        inset 0 0 20px rgba(255, 165, 0, 0.1);
+        0 0 40px rgba(255, 75, 0, 0.35),
+        0 0 80px rgba(255, 75, 0, 0.18),
+        inset 0 0 20px rgba(255, 75, 0, 0.08);
       text-align: center;
-      border-image: linear-gradient(135deg, #ffa500, #ffdd00, #ffa500) 1;
+      border-image: linear-gradient(135deg, var(--accent), var(--highlight), var(--accent)) 1;
       animation: cardPulse 3s ease-in-out infinite;
+    }
+
+    #r6-logo {
+      max-width: 240px;
+      width: 100%;
+      height: auto;
+      margin-bottom: 18px;
+      display: block;
+      z-index: 3;
     }
     
     @keyframes cardPulse {
@@ -75,7 +92,7 @@
     }
     
     h1 {
-      color: #ffdd00;
+      color: var(--highlight);
       font-size: 2rem;
       font-weight: 900;
       letter-spacing: 3px;
@@ -83,9 +100,9 @@
       text-transform: uppercase;
       user-select: none;
       text-shadow: 
-        0 0 10px rgba(255, 221, 0, 0.8),
-        0 0 20px rgba(255, 165, 0, 0.6),
-        0 0 30px rgba(255, 165, 0, 0.4);
+        0 0 10px rgba(255, 209, 0, 0.85),
+        0 0 20px rgba(255, 75, 0, 0.6),
+        0 0 30px rgba(255, 75, 0, 0.35);
       animation: titleGlow 2s ease-in-out infinite;
     }
     
@@ -96,7 +113,7 @@
     
     .subtitle {
       font-size: 1.8rem;
-      color: #ffa500;
+      color: var(--accent);
       margin-bottom: 24px;
       letter-spacing: 2px;
       text-shadow: 0 0 8px rgba(255, 165, 0, 0.6);
@@ -137,11 +154,11 @@
     }
     
     .status-box.active {
-      border-color: #ffdd00;
-      background: linear-gradient(135deg, rgba(255, 221, 0, 0.15), rgba(255, 165, 0, 0.1));
+      border-color: var(--highlight);
+      background: linear-gradient(135deg, rgba(255, 209, 0, 0.12), rgba(255, 75, 0, 0.06));
       box-shadow: 
-        0 0 20px rgba(255, 221, 0, 0.6),
-        inset 0 0 15px rgba(255, 221, 0, 0.2);
+        0 0 20px rgba(255, 209, 0, 0.45),
+        inset 0 0 15px rgba(255, 209, 0, 0.12);
     }
     
     .ready-indicator {
@@ -154,16 +171,16 @@
     }
     
     .ready-indicator.ready {
-      color: #00ff00;
-      text-shadow: 0 0 8px rgba(0, 255, 0, 0.8);
+      color: var(--success);
+      text-shadow: 0 0 8px rgba(0, 221, 102, 0.8);
     }
     
     .timer-container {
       display: none;
       margin-top: 24px;
       padding: 16px;
-      background: linear-gradient(135deg, rgba(204, 51, 51, 0.15), rgba(255, 68, 68, 0.1));
-      border: 2px solid #ff6666;
+      background: linear-gradient(135deg, rgba(204, 51, 51, 0.12), rgba(255, 68, 68, 0.08));
+      border: 2px solid var(--danger);
       border-radius: 0px;
       text-align: center;
     }
@@ -179,7 +196,7 @@
     .timer-display {
       font-size: 2.5rem;
       font-weight: 900;
-      color: #ffdd00;
+      color: var(--highlight);
       letter-spacing: 2px;
       text-shadow: 0 0 20px rgba(255, 221, 0, 0.8), 0 0 40px rgba(255, 165, 0, 0.6);
       font-family: 'Courier New', monospace;
@@ -202,9 +219,9 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: linear-gradient(135deg, #cc3333, #ff4444, #dd2222);
+      background: linear-gradient(135deg, var(--danger), #ff6666, #dd2222);
       color: #ffffff;
-      border: 3px solid #ff6666;
+      border: 3px solid var(--danger);
       border-radius: 0px;
       padding: 30px 40px;
       font-size: 1.3rem;
@@ -226,7 +243,7 @@
     
     .status-title {
       font-size: 0.75rem;
-      color: #ffa500;
+      color: var(--accent);
       font-weight: bold;
       letter-spacing: 1px;
     }
@@ -244,8 +261,8 @@
     }
     
     .status-value.on { 
-      color: #ffdd00;
-      text-shadow: 0 0 12px rgba(255, 221, 0, 0.9);
+      color: var(--highlight);
+      text-shadow: 0 0 12px rgba(255, 209, 0, 0.95);
       animation: statusPulse 0.6s ease-in-out;
     }
     
@@ -255,7 +272,7 @@
     }
 
     .btn-activate {
-      background: linear-gradient(135deg, #ffdd00, #ffa500, #ff8800);
+      background: linear-gradient(135deg, var(--highlight), var(--accent), #ff7a33);
       color: #000000;
       border: 2px solid #ffaa00;
       padding: 18px 36px;
@@ -268,8 +285,8 @@
       text-transform: uppercase;
       transition: all 0.2s ease;
       box-shadow: 
-        0 0 20px rgba(255, 165, 0, 0.6),
-        inset 0 0 10px rgba(255, 221, 0, 0.3);
+        0 0 20px rgba(255, 75, 0, 0.45),
+        inset 0 0 10px rgba(255, 209, 0, 0.25);
       position: relative;
       overflow: hidden;
     }
@@ -336,10 +353,10 @@
     }
     
     .btn-ready.active {
-      background: linear-gradient(135deg, #00dd00, #00ff00, #00dd00);
+      background: linear-gradient(135deg, #00bb55, #00dd66, #00bb55);
       color: #000000;
-      border-color: #00ff00;
-      box-shadow: 0 0 30px rgba(0, 255, 0, 0.8), inset 0 0 10px rgba(0, 255, 0, 0.3);
+      border-color: #00dd66;
+      box-shadow: 0 0 30px rgba(0, 221, 102, 0.8), inset 0 0 10px rgba(0, 221, 102, 0.3);
       font-weight: 900;
     }
     
@@ -419,6 +436,8 @@
   <link rel="icon" href="favicon.ico" type="image/x-icon">
 </head>
 <body>
+
+  <img src="R6_logo.jpg" id="r6-logo" alt="R6 Logo">
 
   <div class="card">
     <h1>MISSION TRIANGULATION</h1>
