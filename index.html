@@ -535,6 +535,9 @@
     // Variable pour gérer l'intervalle du timer
     let timerInterval = null;
     
+    // Flag pour éviter le double déclenchement de la réinitialisation
+    let autoResetTriggered = false;
+    
     // Créer l'élément de message d'erreur
     const errorMessage = document.createElement('div');
     errorMessage.className = 'error-message';
@@ -545,6 +548,9 @@
     // Fonction de réinitialisation sécurisée
     function executeReset(redirectAfter = false) {
       if (resetBtn) resetBtn.innerText = "PATIENTEZ...";
+      
+      // Réinitialiser le flag
+      autoResetTriggered = false;
       
       // Arrêter le timer
       if (timerInterval) {
@@ -666,6 +672,23 @@
         timerDisplay.classList.remove('warning');
       }
       
+      // Déclencher la réinitialisation automatique si le temps est écoulé (une seule fois)
+      if (secondsRemaining <= 0 && !autoResetTriggered) {
+        autoResetTriggered = true;
+        
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+        
+        // Afficher le message d'erreur pendant 3s puis réinitialiser
+        errorMessage.style.display = 'block';
+        setTimeout(() => {
+          errorMessage.style.display = 'none';
+          executeReset(false);
+        }, 3000);
+      }
+      
       return secondsRemaining;
     }
 
@@ -759,8 +782,9 @@
         if ((maxTime - minTime) <= MAX_TIME_WINDOW_MS) {
           stopTimerDisplay();
           document.getElementById('clue-box').style.display = 'block';
-        } else {
-          // Afficher le message d'erreur pendant 3s puis réinitialiser
+        } else if (!autoResetTriggered) {
+          // Ne déclencher que si le reset auto n'a pas déjà été déclenché
+          autoResetTriggered = true;
           errorMessage.style.display = 'block';
           setTimeout(() => {
             errorMessage.style.display = 'none';
