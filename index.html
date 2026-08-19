@@ -95,10 +95,10 @@
     }
     
     .subtitle {
-      font-size: 0.95rem;
+      font-size: 1.8rem;
       color: #ffa500;
       margin-bottom: 24px;
-      letter-spacing: 1px;
+      letter-spacing: 2px;
       text-shadow: 0 0 8px rgba(255, 165, 0, 0.6);
       font-weight: bold;
     }
@@ -538,6 +538,28 @@
     // Flag pour éviter le double déclenchement de la réinitialisation
     let autoResetTriggered = false;
     
+    // Mémorise le dernier état connu de chaque station pour détecter les changements
+    let lastStationStates = { A: null, B: null, C: null };
+
+    // Joue un bip via l'API Web Audio (aucun fichier externe requis)
+    function playBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+        oscillator.type = 'square';
+        oscillator.frequency.value = 880;
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.start();
+        oscillator.stop(ctx.currentTime + 0.2);
+      } catch (e) {
+        // Web Audio non supporté, on ignore silencieusement
+      }
+    }
+    
     // Créer l'élément de message d'erreur
     const errorMessage = document.createElement('div');
     errorMessage.className = 'error-message';
@@ -734,6 +756,15 @@
       const stC = data.station_C || { active: false, timestamp: 0, ready: false };
       const startTime = data.startTime || 0;
 
+      // Bip sonore dès qu'une station change d'état (active ou prêt)
+      [['A', stA], ['B', stB], ['C', stC]].forEach(([key, st]) => {
+        const previous = lastStationStates[key];
+        if (previous !== null && (previous.active !== st.active || previous.ready !== st.ready)) {
+          playBeep();
+        }
+        lastStationStates[key] = { active: st.active, ready: st.ready };
+      });
+
     // Mise à jour des voyants de statut
       updateUI('A', stA.active);
       updateUI('B', stB.active);
@@ -829,3 +860,4 @@
   </script>
 </body>
 </html>
+
