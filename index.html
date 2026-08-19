@@ -353,11 +353,46 @@
 
     const MAX_TIME_WINDOW_MS = 30 * 1000;
 
+    // Codes sécurisés des stations (6 caractères alphanumériques)
+    const STATION_CODES = {
+      'K9xRt2': 'A',
+      'M7pQv5': 'B',
+      'N3sFw8': 'C'
+    };
+
+    const ADMIN_CODE = 'admin_panel_secure';
+
+    // Fonction pour générer des codes si besoin
+    function generateStationCode() {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    }
+
     // -------------------------------------------------------------
     // 2. PARSING DE L'URL ET GESTION DES MODES
     // -------------------------------------------------------------
     const urlParams = new URLSearchParams(window.location.search);
-    const currentStation = (urlParams.get('station') || 'A').toLowerCase();
+    const stationParam = (urlParams.get('station') || '').toLowerCase();
+    
+    // Déterminer la station actuelle à partir du code
+    let currentStation = null;
+    let isAdmin = false;
+    
+    if (stationParam === ADMIN_CODE) {
+      isAdmin = true;
+      currentStation = 'admin';
+    } else if (STATION_CODES[stationParam]) {
+      currentStation = STATION_CODES[stationParam];
+    } else if (stationParam === 'reset') {
+      currentStation = 'reset';
+    } else {
+      // Aucun code valide
+      currentStation = null;
+    }
 
     const stationLabel = document.getElementById('station-label');
     const activateBtn = document.getElementById('activate-btn');
@@ -374,7 +409,7 @@
       })
       .then(() => {
         if (redirectAfter) {
-          window.location.href = window.location.pathname + '?station=admin';
+          window.location.href = window.location.pathname + '?station=' + ADMIN_CODE;
         } else if (resetBtn) {
           resetBtn.innerText = "⚠️ RÉINITIALISER LA MISSION";
         }
@@ -386,15 +421,22 @@
     }
 
     // Initialisation selon le paramètre URL
-    if (currentStation === 'reset' || urlParams.has('reset')) {
+    if (!currentStation) {
+      // Code invalide ou manquant
+      stationLabel.innerText = "CODE D'ACCÈS INVALIDE";
+      stationLabel.style.color = "#cc3333";
+      activateBtn.style.display = 'none';
+      activateBtn.disabled = true;
+    }
+    else if (currentStation === 'reset') {
       stationLabel.innerText = "RÉINITIALISATION EN COURS...";
-      stationLabel.style.color = "#f85149";
+      stationLabel.style.color = "#cc3333";
       activateBtn.style.display = 'none';
       executeReset(true);
     } 
-    else if (currentStation === 'admin') {
+    else if (isAdmin) {
       stationLabel.innerText = "MODE ADMINISTRATEUR";
-      stationLabel.style.color = "#f85149";
+      stationLabel.style.color = "#cc3333";
       resetBtn.style.display = 'block';
       activateBtn.style.display = 'none';
     } 
@@ -406,7 +448,7 @@
     // 3. ACTIONS BOUTONS
     // -------------------------------------------------------------
     function activateStation() {
-      if (currentStation === 'admin' || currentStation === 'reset') return;
+      if (!currentStation || currentStation === 'admin' || currentStation === 'reset') return;
 
       activateBtn.disabled = true;
       activateBtn.innerText = "RELAIS ÉMIS...";
@@ -437,7 +479,7 @@
       updateUI('C', stC.active);
 
       // Gestion du bouton local
-      if (currentStation !== 'admin' && currentStation !== 'reset') {
+      if (currentStation && currentStation !== 'admin' && currentStation !== 'reset') {
         const myStationData = data[`station_${currentStation.toUpperCase()}`];
 
         if (!myStationData || !myStationData.active) {
