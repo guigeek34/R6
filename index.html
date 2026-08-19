@@ -355,16 +355,16 @@
 
     // Codes sécurisés des stations (6 caractères alphanumériques)
     const STATION_CODES = {
-      'K9xRt2': 'A',
-      'M7pQv5': 'B',
-      'N3sFw8': 'C'
+      'k9xrt2': 'A',
+      'm7pqv5': 'B',
+      'n3sfw8': 'C'
     };
 
     const ADMIN_CODE = 'admin_panel_secure';
 
     // Fonction pour générer des codes si besoin
     function generateStationCode() {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
       let code = '';
       for (let i = 0; i < 6; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
